@@ -6,12 +6,15 @@
 #include <unistd.h>
 
 #define FIB_DEV "/dev/fibonacci"
+#define MAXDIGITS 100
+
+
 
 int main()
 {
     long long sz;
-
-    char buf[1];
+    // u128_t sz;
+    char buf[MAXDIGITS];
     char write_buf[] = "testing writing";
     int offset = 100; /* TODO: try test something bigger than the limit */
 
@@ -28,20 +31,20 @@ int main()
 
     for (int i = 0; i <= offset; i++) {
         lseek(fd, i, SEEK_SET);
-        sz = read(fd, buf, 1);
+        sz = read(fd, buf, MAXDIGITS);
         printf("Reading from " FIB_DEV
                " at offset %d, returned the sequence "
-               "%lld.\n",
-               i, sz);
+               "%s.\n",
+               i, buf);
     }
 
     for (int i = offset; i >= 0; i--) {
         lseek(fd, i, SEEK_SET);
-        sz = read(fd, buf, 1);
+        sz = read(fd, buf, MAXDIGITS);
         printf("Reading from " FIB_DEV
                " at offset %d, returned the sequence "
-               "%lld.\n",
-               i, sz);
+               "%s.\n",
+               i, buf);
     }
 
     close(fd);

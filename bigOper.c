@@ -1,35 +1,13 @@
-#include <linux/cdev.h>
-#include <linux/device.h>
-#include <linux/fs.h>
-#include <linux/init.h>
-#include <linux/kdev_t.h>
-#include <linux/kernel.h>
-#include <linux/module.h>
-#include <linux/mutex.h>
-#include <linux/uaccess.h>
+#include <stdio.h>
 
-MODULE_LICENSE("Dual MIT/GPL");
-MODULE_AUTHOR("National Cheng Kung University, Taiwan");
-MODULE_DESCRIPTION("Fibonacci engine driver");
-MODULE_VERSION("0.1");
-
-#define DEV_FIBONACCI_NAME "fibonacci"
-
-/* MAX_LENGTH is set to 92 because
- * ssize_t can't fit the number > 92
- */
-#define MAX_LENGTH 101
-
-static dev_t fib_dev = 0;
-static struct cdev *fib_cdev;
-static struct class *fib_class;
-static DEFINE_MUTEX(fib_mutex);
-
+#include <math.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define MAXDIGITS 100 /* maximum length bignum */
 #define PLUS 1        /* positive sign bit */
 #define MINUS -1      /* negative sign bit */
-#define MAX(a, b) ((a > b) ? a : b)
+#define max(a, b) ((a > b) ? a : b)
 
 #ifndef strlcpy
 #define strlcpy(dst, src, sz) snprintf((dst), (sz), "%s", (src))
@@ -44,9 +22,56 @@ typedef struct {
 int add_bignum(bignum *a, bignum *b, bignum *c);
 int compare_bignum(bignum *a, bignum *b);
 int subtract_bignum(bignum *a, bignum *b, bignum *c);
+/*
+void print_bignum(bignum *n);
 
+void int_to_bignum(int s, bignum *n);
+
+void initialize_bignum(bignum *n);
+
+int add_bignum(bignum *a, bignum *b, bignum *c);
+
+int subtract_bignum(bignum *a, bignum *b, bignum *c);
+
+zero_justify(bignum *n);
+
+int compare_bignum(bignum *a, bignum *b);
+*/
+
+
+/* ************************************** */
+
+/*      print a Big integer               */
+
+/*      Input : A big integer pointer     */
+
+/*      Return : None                     */
+
+/* ************************************** */
+
+void print_bignum(bignum *n)
+{
+    if (n->signbit == MINUS)
+        printf("-");
+    printf("%s\n", n->digits);
+}
+
+
+
+/* *********************************************** */
+
+/*      Convert an integer into big integer        */
+
+/*      Input : A integer and a big integer        */
+
+/*              pointer                            */
+
+/*      Return : None                              */
+
+/* *********************************************** */
 
 void int_to_bignum(int s, bignum *n)
+
 {
     if (s >= 0)
         n->signbit = PLUS;
@@ -57,20 +82,46 @@ void int_to_bignum(int s, bignum *n)
     n->lastdigit = strlen(n->digits);
 }
 
+/* **************************************** */
+
+/*      Inatilize a zero integer            */
+
+/*      Input : A big integer pointer       */
+
+/*      Return : None                       */
+
+/* **************************************** */
+
 void initialize_bignum(bignum *n)
 {
     int_to_bignum(0, n);
 }
+
+
+
+/* *********************************************************** */
+
+/*      Add two big integer                                    */
+
+/*      Input : Three big integer pointer a,b,c                */
+
+/*              where a & b is argument of addition            */
+
+/*              and c is the result. c = a + b                 */
+
+/*      Return : Number of carry                               */
+
+/* *********************************************************** */
 
 int add_bignum(bignum *a, bignum *b, bignum *c)
 
 {
     int carry; /* carry digit */
 
-    int i, j;  //, op = 0;
-               /* counter */
+    int i, j;
+    ; /* counter */
 
-    int n_carry;  //, temp;
+    int n_carry;
     initialize_bignum(c);
     if (a->signbit == b->signbit)
         c->signbit = a->signbit;
@@ -121,10 +172,24 @@ int add_bignum(bignum *a, bignum *b, bignum *c)
     return n_carry;
 }
 
+
+
+/* ************************************************************ */
+
+/*      Subtract two big integer                                */
+
+/*      Input : Three big integer pointer a,b,c                 */
+
+/*              where a & b is argument of subtraction          */
+
+/*            and c is the result.                              */
+
+/*      Return : Number of borrow                               */
+
+/* ************************************************************ */
+
 int subtract_bignum(bignum *a, bignum *b, bignum *c)
 {
-    // int borrow; /* has anything been borrowed? */
-    // int v; /* placeholder digit */
     register int i, j, op = 0; /* counter */
     int n_borrow;
     int temp;
@@ -146,12 +211,11 @@ int subtract_bignum(bignum *a, bignum *b, bignum *c)
         c->signbit = MINUS;
         return n_borrow;
     }
-    int k = c->lastdigit = MAX(a->lastdigit, b->lastdigit);
+    int k = c->lastdigit = max(a->lastdigit, b->lastdigit);
     n_borrow = 0;
     c->digits[k--] = '\0';
     for (i = a->lastdigit - 1, j = b->lastdigit - 1; j >= 0; i--, j--) {
         temp = a->digits[i] - '0' - (b->digits[j] - '0' + op);
-
         if (temp < 0) {
             temp += 10;
             op = 1;
@@ -185,6 +249,23 @@ int subtract_bignum(bignum *a, bignum *b, bignum *c)
     return n_borrow;
 }
 
+
+/* **************************************************** */
+
+/*      Compare two big integer                         */
+
+/*      Input : Two big integer pointer a,b             */
+
+/*      Return : 0,1 or -1,                             */
+
+/*               0 for a=b                              */
+
+/*               1 for a < b                            */
+
+/*               -1 for a>b                             */
+
+/* **************************************************** */
+
 int compare_bignum(bignum *a, bignum *b)
 
 {
@@ -210,10 +291,26 @@ int compare_bignum(bignum *a, bignum *b)
     return (0);
 }
 
+
+
+/* *************************************************************** */
+
+/*      Multiply two big integer                                   */
+
+/*      Input : Three big integer pointer a,b,c                    */
+
+/*              where a & b is argument of multiplication          */
+
+/*            and c is the result.                                 */
+
+/*      Return : Number of borrow                                  */
+
+/* *************************************************************** */
+
 void multiply_bignum(bignum *a, bignum *b, bignum *c)
 {
     // long int n_d;
-    register long int i, j, k = 0;
+    register long int i, j, k;
     short int num1[MAXDIGITS], num2[MAXDIGITS], of = 0, res[MAXDIGITS] = {0};
     // n_d = (a->lastdigit < b->lastdigit) ? b->lastdigit : a->lastdigit;
     // n_d++;
@@ -243,6 +340,20 @@ void multiply_bignum(bignum *a, bignum *b, bignum *c)
     c->signbit = a->signbit * b->signbit;
 }
 
+
+
+/* ******************************************************* */
+
+/*      Copy one big integer into another                  */
+
+/*      Input : Two big integer pointer a,b                */
+
+/*              where a is destinition & b source          */
+
+/*      Return : None                                      */
+
+/* ******************************************************* */
+
 void copy(bignum *a, bignum *b)
 {
     a->lastdigit = b->lastdigit;
@@ -250,167 +361,49 @@ void copy(bignum *a, bignum *b)
     strlcpy(a->digits, b->digits, MAXDIGITS);
 }
 
-static bignum fib_sequence(unsigned long long k)
+int main()
 {
-    bignum a, b;  //, c;
+    bignum a, b;
+    // bignum n1, n2, n3, zero, n4;
+    // printf("a = %s    b = %s\n",a,b);
+    // int n = 100;
+    // int k = 10;
+    unsigned long long k = 100;
     bignum big_two;
     int_to_bignum(0, &a);
     int_to_bignum(1, &b);
     int_to_bignum(2, &big_two);
+    // for(; k < 100; k++){
     for (int i = 31 - __builtin_clz(k); i >= 0; i--) {
+        // unsigned long long t1, t2;
+        // printf("%d\n",i);
         bignum t1, t2;
         bignum tmp1, tmp2;
         multiply_bignum(&b, &big_two, &tmp1);
         (void) subtract_bignum(&tmp1, &a, &tmp2);
         multiply_bignum(&a, &tmp2, &t1);
-
+        // print_bignum(&t1);
+        // t1 = multiBigN(a, subBigN(shiftLeftBigN(b), a));
+        // t1 = a * (b * 2 - a);
         multiply_bignum(&a, &a, &tmp1);
         multiply_bignum(&b, &b, &tmp2);
         (void) add_bignum(&tmp1, &tmp2, &t2);
+        // print_bignum(&t2);
+        // t2 = b * b + a * a;
+        // t2 = addBigN(multiBigN(b, b), multiBigN(a, a));
         copy(&a, &t1);
         copy(&b, &t2);
+        // a = t1;
+        // b = t2;
         if ((k & (1 << i)) > 0) {
+            // t1 = a + b;
+            // t1 = addBigN(a, b);
             (void) add_bignum(&a, &b, &t1);
             copy(&a, &b);
             copy(&b, &t1);
+            // a = b;
+            // b = t1;
         }
     }
-    // printk("%s\n",a.digits);
-    return a;
+    print_bignum(&a);
 }
-
-static int fib_open(struct inode *inode, struct file *file)
-{
-    if (!mutex_trylock(&fib_mutex)) {
-        printk(KERN_ALERT "fibdrv is in use");
-        return -EBUSY;
-    }
-    return 0;
-}
-
-static int fib_release(struct inode *inode, struct file *file)
-{
-    mutex_unlock(&fib_mutex);
-    return 0;
-}
-
-/* calculate the fibonacci number at given offset */
-static ssize_t fib_read(struct file *file,
-                        char *buf,
-                        size_t size,
-                        loff_t *offset)
-{
-    char kbuf[MAXDIGITS] = {0};
-    bignum res = fib_sequence(*offset);
-    snprintf(kbuf, MAXDIGITS, "%s", res.digits);
-    copy_to_user(buf, kbuf, MAXDIGITS);
-    return 0;
-}
-
-/* write operation is skipped */
-static ssize_t fib_write(struct file *file,
-                         const char *buf,
-                         size_t size,
-                         loff_t *offset)
-{
-    return 1;  //(u128_t){.upper = 0, .lower = 1};
-}
-
-static loff_t fib_device_lseek(struct file *file, loff_t offset, int orig)
-{
-    loff_t new_pos = 0;
-    switch (orig) {
-    case 0: /* SEEK_SET: */
-        new_pos = offset;
-        break;
-    case 1: /* SEEK_CUR: */
-        new_pos = file->f_pos + offset;
-        break;
-    case 2: /* SEEK_END: */
-        new_pos = MAX_LENGTH - offset;
-        break;
-    }
-
-    if (new_pos > MAX_LENGTH)
-        new_pos = MAX_LENGTH;  // max case
-    if (new_pos < 0)
-        new_pos = 0;        // min case
-    file->f_pos = new_pos;  // This is what we'll use now
-    return new_pos;
-}
-
-const struct file_operations fib_fops = {
-    .owner = THIS_MODULE,
-    .read = fib_read,
-    .write = fib_write,
-    .open = fib_open,
-    .release = fib_release,
-    .llseek = fib_device_lseek,
-};
-
-static int __init init_fib_dev(void)
-{
-    int rc = 0;
-
-    mutex_init(&fib_mutex);
-
-    // Let's register the device
-    // This will dynamically allocate the major number
-    rc = alloc_chrdev_region(&fib_dev, 0, 1, DEV_FIBONACCI_NAME);
-
-    if (rc < 0) {
-        printk(KERN_ALERT
-               "Failed to register the fibonacci char device. rc = %i",
-               rc);
-        return rc;
-    }
-
-    fib_cdev = cdev_alloc();
-    if (fib_cdev == NULL) {
-        printk(KERN_ALERT "Failed to alloc cdev");
-        rc = -1;
-        goto failed_cdev;
-    }
-    cdev_init(fib_cdev, &fib_fops);
-    rc = cdev_add(fib_cdev, fib_dev, 1);
-
-    if (rc < 0) {
-        printk(KERN_ALERT "Failed to add cdev");
-        rc = -2;
-        goto failed_cdev;
-    }
-
-    fib_class = class_create(THIS_MODULE, DEV_FIBONACCI_NAME);
-
-    if (!fib_class) {
-        printk(KERN_ALERT "Failed to create device class");
-        rc = -3;
-        goto failed_class_create;
-    }
-
-    if (!device_create(fib_class, NULL, fib_dev, NULL, DEV_FIBONACCI_NAME)) {
-        printk(KERN_ALERT "Failed to create device");
-        rc = -4;
-        goto failed_device_create;
-    }
-    return rc;
-failed_device_create:
-    class_destroy(fib_class);
-failed_class_create:
-    cdev_del(fib_cdev);
-failed_cdev:
-    unregister_chrdev_region(fib_dev, 1);
-    return rc;
-}
-
-static void __exit exit_fib_dev(void)
-{
-    mutex_destroy(&fib_mutex);
-    device_destroy(fib_class, fib_dev);
-    class_destroy(fib_class);
-    cdev_del(fib_cdev);
-    unregister_chrdev_region(fib_dev, 1);
-}
-
-module_init(init_fib_dev);
-module_exit(exit_fib_dev);
